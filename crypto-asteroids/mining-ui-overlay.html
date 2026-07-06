@@ -1,0 +1,101 @@
+<!-- Mining Dashboard Overlay -->
+<div id="miningOverlay" style="display:none; position:fixed; top:0; right:0; width:300px; height:100%; background:#1a1a2e; border-left:2px solid #00FF00; z-index:999; overflow-y:auto; color:#00FF00; font-family:monospace; font-size:11px; padding:15px;">
+  <h3 style="color:#00FF00; margin-bottom:10px; border-bottom:1px solid #00FF00; padding-bottom:5px;">⛏️ DATA MINING</h3>
+  
+  <div style="background:#0a1628; border:1px solid #00FF00; border-radius:4px; padding:10px; margin-bottom:10px;">
+    <div style="margin-bottom:8px;">
+      <label style="color:#888;">Mining Status</label>
+      <div id="miningStatus" style="color:#FFFF00;">🟡 IDLE</div>
+    </div>
+    <div style="margin-bottom:8px;">
+      <label style="color:#888;">Players Tracked</label>
+      <div id="playersTracked" style="color:#00FF00;">0</div>
+    </div>
+    <div style="margin-bottom:8px;">
+      <label style="color:#888;">Data Points Mined</label>
+      <div id="dataPointsMined" style="color:#00FF00;">0</div>
+    </div>
+    <div style="margin-bottom:8px;">
+      <label style="color:#888;">Estimated Value</label>
+      <div id="miningValue" style="color:#00FF00; font-size:12px;">₿ 0.00000000</div>
+    </div>
+    <div>
+      <label style="color:#888;">Recipient Wallet</label>
+      <div id="recipientWallet" style="color:#FFA500; font-size:9px; word-break:break-all;">3JHKWueEFH...</div>
+    </div>
+  </div>
+
+  <div style="background:#0a1628; border:1px solid #00FF00; border-radius:4px; padding:10px; margin-bottom:10px;">
+    <h4 style="color:#00FF00; margin-bottom:8px; border-bottom:1px solid #00FF00; padding-bottom:5px;">Recent Batches</h4>
+    <div id="batchLog" style="max-height:200px; overflow-y:auto;">
+      <p style="color:#666;">No batches mined yet</p>
+    </div>
+  </div>
+
+  <div style="background:#0a1628; border:1px solid #00FF00; border-radius:4px; padding:10px;">
+    <h4 style="color:#00FF00; margin-bottom:8px; border-bottom:1px solid #00FF00; padding-bottom:5px;">Player Profiles</h4>
+    <div id="profileLog" style="max-height:150px; overflow-y:auto;">
+      <p style="color:#666;">No profiles collected</p>
+    </div>
+  </div>
+
+  <button onclick="toggleMining()" style="width:100%; margin-top:15px; background:#00FF00; color:#000814; border:2px solid #00FF00; padding:8px; cursor:pointer; border-radius:4px; font-weight:bold;">START MINING</button>
+  <button onclick="exportMiningData()" style="width:100%; margin-top:8px; background:#1a1a2e; color:#00FF00; border:2px solid #00FF00; padding:8px; cursor:pointer; border-radius:4px;">EXPORT DATA</button>
+</div>
+
+<script>
+  let isMiningActive = false;
+
+  function toggleMining() {
+    isMiningActive = !isMiningActive;
+    if (isMiningActive) {
+      dataMiner.startDataMining(30);
+      document.getElementById('miningStatus').textContent = '🟢 ACTIVE';
+      document.getElementById('miningStatus').style.color = '#00FF00';
+    } else {
+      dataMiner.stopDataMining();
+      document.getElementById('miningStatus').textContent = '🛑 STOPPED';
+      document.getElementById('miningStatus').style.color = '#FF0000';
+    }
+  }
+
+  function exportMiningData() {
+    const data = dataMiner.exportMiningData();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mining_data_${Date.now()}.json`;
+    a.click();
+  }
+
+  function updateMiningUI() {
+    const stats = dataMiner.getMiningStats();
+    document.getElementById('playersTracked').textContent = stats.totalProfiles;
+    document.getElementById('dataPointsMined').textContent = stats.totalDataPoints;
+    document.getElementById('miningValue').textContent = `₿ ${(stats.totalValue / 100000000).toFixed(8)}`;
+    document.getElementById('recipientWallet').textContent = stats.recipient.substring(0, 20) + '...';
+  }
+
+  // Listen to mining events
+  dataMiner.on('batch_mined', (batch) => {
+    const log = document.getElementById('batchLog');
+    const entry = document.createElement('div');
+    entry.style.cssText = 'background:#16213e;border:1px solid #00FF00;padding:5px;margin-bottom:5px;border-radius:2px;';
+    entry.innerHTML = `<strong>${batch.batchId.substring(0, 16)}...</strong><br>Value: ${(batch.estimatedValue / 100000000).toFixed(8)} BTC`;
+    log.insertBefore(entry, log.firstChild);
+    updateMiningUI();
+  });
+
+  dataMiner.on('player_tracked', (data) => {
+    const log = document.getElementById('profileLog');
+    const entry = document.createElement('div');
+    entry.style.cssText = 'background:#16213e;border:1px solid #00FF00;padding:5px;margin-bottom:5px;border-radius:2px;font-size:10px;';
+    entry.textContent = `${data.playerId.substring(0, 12)}... (${data.profile.wallet.network})`;
+    log.insertBefore(entry, log.firstChild);
+    updateMiningUI();
+  });
+
+  // Update UI every second
+  setInterval(updateMiningUI, 1000);
+</script>
